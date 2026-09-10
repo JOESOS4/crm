@@ -1,0 +1,72 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: crm
+    volumes:
+      - crm-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/crm?schema=public
+      PORT: "3001"
+      AGENT_URL: http://agent:2000
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      ALLOWED_SIGN_IN: ${ALLOWED_SIGN_IN}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      API_URL: ${API_URL}
+      APP_URL: ${APP_URL}
+      AUTH_COOKIE_DOMAIN: ${AUTH_COOKIE_DOMAIN}
+      AGENT_BRIDGE_SECRET: ${AGENT_BRIDGE_SECRET}
+      CRON_SECRET: ${CRON_SECRET}
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.app
+      args:
+        API_URL: ${API_URL}
+        APP_URL: ${APP_URL}
+        NEXT_PUBLIC_API_URL: ${API_URL}
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      PORT: "3000"
+
+  agent:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/crm?schema=public
+      AGENT_PORT: "2000"
+      AI_GATEWAY_API_KEY: ${AI_GATEWAY_API_KEY}
+      AGENT_BRIDGE_SECRET: ${AGENT_BRIDGE_SECRET}
+    volumes:
+      - crm-agent-workflow-data:/app/apps/agent/.eve/.workflow-data
+      - /var/run/docker.sock:/var/run/docker.sock
+
+volumes:
+  crm-postgres-data:
+  crm-agent-workflow-data:
