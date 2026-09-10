@@ -23,8 +23,10 @@ RUN apk add --no-cache docker-cli
 RUN addgroup --system --gid 1001 crm && \
     adduser --system --uid 1001 crm
 COPY --from=installer --chown=crm:crm /app .
+RUN mkdir -p /app/apps/agent/.eve/.workflow-data && \
+    chown -R crm:crm /app/apps/agent/.eve/.workflow-data
 USER crm
 WORKDIR /app/apps/agent
 EXPOSE 2000
 ENV AGENT_PORT=2000
-CMD ["bun", "scripts/start.ts"]
+CMD ["bun", "run", "start"]
