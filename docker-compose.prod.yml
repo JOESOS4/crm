@@ -35,6 +35,9 @@ services:
       AUTH_COOKIE_DOMAIN: ${AUTH_COOKIE_DOMAIN}
       AGENT_BRIDGE_SECRET: ${AGENT_BRIDGE_SECRET}
       CRON_SECRET: ${CRON_SECRET}
+    networks:
+      - default
+      - edge
 
   app:
     build:
@@ -49,6 +52,9 @@ services:
       - api
     environment:
       PORT: "3000"
+    networks:
+      - default
+      - edge
 
   agent:
     build:
@@ -70,3 +76,8 @@ services:
 volumes:
   crm-postgres-data:
   crm-agent-workflow-data:
+
+networks:
+  default: {}
+  edge:
+    external: true
