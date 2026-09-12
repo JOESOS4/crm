@@ -35,9 +35,6 @@ services:
       AUTH_COOKIE_DOMAIN: ${AUTH_COOKIE_DOMAIN}
       AGENT_BRIDGE_SECRET: ${AGENT_BRIDGE_SECRET}
       CRON_SECRET: ${CRON_SECRET}
-    networks:
-      - default
-      - edge
 
   app:
     build:
@@ -52,9 +49,22 @@ services:
       - api
     environment:
       PORT: "3000"
-    networks:
-      - default
-      - edge
+
+  # crm.jsc.one and crm-api.jsc.one live under a DIFFERENT Cloudflare account
+  # than the Pi's other services (squigle.space) -- Cloudflare Tunnel only
+  # proxies for DNS records in the same account as the tunnel, so this can't
+  # share the existing squigle.space tunnel/Caddy setup. Self-contained
+  # instead: its own tunnel (created under the jsc.one account), reaching
+  # app/api directly by container name on this stack's own network.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - app
+      - api
 
   agent:
     build:
@@ -76,8 +86,3 @@ services:
 volumes:
   crm-postgres-data:
   crm-agent-workflow-data:
-
-networks:
-  default: {}
-  edge:
-    external: true
